@@ -26,6 +26,9 @@ type ChannelName = `#${string}`;
 
 type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
+type EventReturn = void | undefined | null;
+type SubMethods = { prime: boolean; planName: string | null; plan: string };
+
 namespace Options {
 	export interface Options {
 		/**
@@ -199,106 +202,381 @@ interface IRCMessage {
 }
 
 class ClientBase extends EventEmitter {
-	/**
-	 * The input options for the client.
-	 */
-	opts: ClientOptions;
+  /**
+   * The input options for the client.
+   */
+  opts: ClientOptions;
 
-	// Connection related
+  // Connection related
 
-	maxReconnectAttempts: Options.Connection['maxReconnectAttempts'];
-	maxReconnectInterval: Options.Connection['maxReconnectInterval'];
-	reconnect: Options.Connection['reconnect'];
-	reconnectDecay: Options.Connection['reconnectDecay'];
-	reconnectInterval: Options.Connection['reconnectInterval'];
-	/**
-	 * Whether the client is currently waiting before calling `connect` to
-	 * attempt to reconnect.
-	 */
-	reconnecting: boolean;
-	/**
-	 * The current number of reconnect attempts.
-	 */
-	reconnections: number;
-	/**
-	 * The current reconnect interval time in milliseconds.
-	 */
-	reconnectTimer: number;
-	/**
-	 * The current latency of the connection in seconds.
-	 */
-	currentLatency: number;
-	latency: Date;
-	pingLoop: ReturnType<typeof setInterval>;
-	pingTimeout: ReturnType<typeof setTimeout>;
-	secure: Options.Connection['secure'];
-	server: Options.Connection['server'];
-	port: Options.Connection['port'];
-	/**
-	 * Was `close` called on the client?
-	 */
-	wasCloseCalled: boolean;
-	/**
-	 * The reason for the disconnection.
-	 */
-	reason: string;
-	/**
-	 * The WebSocket connection to the Twitch IRC server.
-	 */
-	ws: WebSocket;
+  maxReconnectAttempts: Options.Connection['maxReconnectAttempts'];
+  maxReconnectInterval: Options.Connection['maxReconnectInterval'];
+  reconnect: Options.Connection['reconnect'];
+  reconnectDecay: Options.Connection['reconnectDecay'];
+  reconnectInterval: Options.Connection['reconnectInterval'];
+  /**
+   * Whether the client is currently waiting before calling `connect` to
+   * attempt to reconnect.
+   */
+  reconnecting: boolean;
+  /**
+   * The current number of reconnect attempts.
+   */
+  reconnections: number;
+  /**
+   * The current reconnect interval time in milliseconds.
+   */
+  reconnectTimer: number;
+  /**
+   * The current latency of the connection in seconds.
+   */
+  currentLatency: number;
+  latency: Date;
+  pingLoop: ReturnType<typeof setInterval>;
+  pingTimeout: ReturnType<typeof setTimeout>;
+  secure: Options.Connection['secure'];
+  server: Options.Connection['server'];
+  port: Options.Connection['port'];
+  /**
+   * Was `close` called on the client?
+   */
+  wasCloseCalled: boolean;
+  /**
+   * The reason for the disconnection.
+   */
+  reason: string;
+  /**
+   * The WebSocket connection to the Twitch IRC server.
+   */
+  ws: WebSocket;
 
-	// Chat related
+  // Chat related
 
-	/**
-	 * A comma-separated list of emote sets the client user has access to. A
-	 * list of emotes in each set can be obtained by [calling the Helix API.
-	 * ](https://dev.twitch.tv/docs/api/reference#get-emote-sets)
-	 */
-	emotes: string;
-	/**
-	 * A plain object with no properties. This object used to store the client's
-	 * available emotes for parsing.
-	 * @deprecated
-	 */
-	emotesets: {};
-	/**
-	 * The client's username.
-	 */
-	username: string;
-	/**
-	 * The list of channels the client is currently in (approximately) and will
-	 * join upon connecting or reconnecting.
-	 */
-	channels: ChannelName[];
-	/**
-	 * @see https://dev.twitch.tv/docs/irc/tags/#globaluserstate-tags
-	 */
-	globaluserstate: GlobalUserstate;
-	/**
-	 * @see https://dev.twitch.tv/docs/irc/tags#userstate-tags
-	 */
-	userstate: { [key: ChannelName]: Userstate };
-	/**
-	 * @private
-	 */
-	lastJoined: ChannelName;
-	moderators: { [key: ChannelName]: string[] };
+  /**
+   * A comma-separated list of emote sets the client user has access to. A
+   * list of emotes in each set can be obtained by [calling the Helix API.
+   * ](https://dev.twitch.tv/docs/api/reference#get-emote-sets)
+   */
+  emotes: string;
+  /**
+   * A plain object with no properties. This object used to store the client's
+   * available emotes for parsing.
+   * @deprecated
+   */
+  emotesets: {};
+  /**
+   * The client's username.
+   */
+  username: string;
+  /**
+   * The list of channels the client is currently in (approximately) and will
+   * join upon connecting or reconnecting.
+   */
+  channels: ChannelName[];
+  /**
+   * @see https://dev.twitch.tv/docs/irc/tags/#globaluserstate-tags
+   */
+  globaluserstate: GlobalUserstate;
+  /**
+   * @see https://dev.twitch.tv/docs/irc/tags#userstate-tags
+   */
+  userstate: { [key: ChannelName]: Userstate };
+  /**
+   * @private
+   */
+  lastJoined: ChannelName;
+  moderators: { [key: ChannelName]: string[] };
 
-	// Logger
+  // Logger
 
-	log: Logger;
+  log: Logger;
 
-	constructor(options: ClientOptions);
+  constructor(options: ClientOptions);
 
-	/**
-	 * Connect to the Twitch IRC server.
-	 */
-	connect(): Promise<[ typeof this.server, typeof this.port ]>;
+  /**
+   * Connect to the Twitch IRC server.
+   */
+  connect(): Promise<[ typeof this.server, typeof this.port ]>;
 
-	/**
-	 *
-	 */
-	handleMessage(message: IRCMessage): void;
+  /**
+   *
+   */
+  handleMessage(message: IRCMessage): void;
+
+  on(eventName: "ping" | "pong", listener: () => EventReturn): ClientBase;
+  on(
+    eventName: "mods" | "vips",
+    listener: (users: string[]) => EventReturn
+  ): ClientBase;
+  on(
+    eventName:
+      | "subscriber"
+      | "subscribers"
+      | "emoteonly"
+      | "r9kbeta"
+      | "r9kmode",
+    listener: (channel: string, enabled: boolean) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "resub" | "subanniversary",
+    listener: (
+      channel: string,
+      username: string,
+      streakMonths: number,
+      msg: string,
+      tags: Userstate,
+      methods: SubMethod
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "sub" | "subscription",
+    listener: (
+      channel: string,
+      username: string,
+      streakMonths: number,
+      recipient: string,
+      methods: SubMethod,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "automod",
+    listener: (
+      channel: string,
+      msgid: string | number,
+      msg: string
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName:
+      | "subscriber"
+      | "subscribers"
+      | "emoteonly"
+      | "r9kbeta"
+      | "r9kbeta",
+    listener: (channels: string[]) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "message" | "whisper" | "action",
+    listener: (
+      source: string,
+      tags: Userstate,
+      message: string,
+      self: boolean
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "sub" | "subscription",
+    listener: (
+      channel: string,
+      username: string,
+      methods: SubMethods,
+      msg: string,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "resub" | "subanniversary",
+    listener: (
+      channel: string,
+      username: string,
+      streakMonths: number,
+      msg: string,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "subgift",
+    listener: (
+      channel: string,
+      username: string,
+      streakMonths: number,
+      recipient: string,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "anonsubgift",
+    listener: (
+      channel: string,
+      streakMonths: number,
+      recipient: string,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "submysterygift",
+    listener: (
+      channel: string,
+      username: string,
+      giftSubCount: number,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "anonsubmysterygift",
+    listener: (
+      channel: string,
+      giftSubCount: number,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "primepaidupgrade",
+    listener: (
+      channel: string,
+      username: string,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "anonprimepaidupgrade",
+    listener: (
+      channel: string,
+      username: string,
+      methods: SubMethods,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "announcement",
+    listener: (
+      channel: string,
+      tags: Userstate,
+      msg: string,
+      _: boolean,
+      color: string
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "raid" | "raided",
+    listener: (
+      channel: string,
+      username: string,
+      viewers: number,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "usernotice",
+    listener: (
+      channel: string,
+      username: string,
+      viewers: number,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "hosted",
+    listener: (
+      channel: string,
+      name: string,
+      viewers: number,
+      autohost: boolean
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "hosting",
+    listener: (channel: string, hostee: string, viewers: number) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "unhost",
+    listener: (channel: string, viewers: number) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "ban",
+    listener:
+      | ((
+          channel: string,
+          msg: string,
+          _: null,
+          tags: Userstate
+        ) => EventReturn)
+      | ((
+          channel: string,
+          msg: string,
+          _: null,
+          duration: number,
+          tags: Userstate
+        ) => EventReturn)
+  ): ClientBase;
+  on(
+    eventName: "clearchat",
+    listener: (channel: string) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "messagedeleted",
+    listener: (
+      channel: string,
+      username: string,
+      deletedMessage: string,
+      tags: Userstate
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "join",
+    listener: (channel: string, username: string, self: boolean) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "part",
+    listener: (channel: string, username: string, self: boolean) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "emotesets",
+    listener: (emotes: string) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "globaluserstate",
+    listener: (tags: GlobalUserstate) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "roomstate",
+    listener: (channel: string, tags: Userstate) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "slow" | "slowmode",
+    listener: (
+      channel: string,
+      enabled: boolean,
+      seconds?: number
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "mod" | "unmod",
+    listener: (channel: string, username: string) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "followersonly" | "followersmode",
+    listener: (
+      channel: string,
+      enabled: boolean,
+      minutes?: number
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "cheer",
+    listener: (channel: string, tags: Userstate, msg: string) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "redeem",
+    listener: (
+      channel: string,
+      username: string,
+      rewardType: string,
+      tags: Userstate,
+      msg: string
+    ) => EventReturn
+  ): ClientBase;
+  on(
+    eventName: "notice" | string,
+    listener: (...args: any) => EventReturn
+  ): ClientBase;
 }
 
 class Client extends ClientBase {
