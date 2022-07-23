@@ -86,7 +86,7 @@ namespace Options {
 		 */
 		secure: boolean;
 		/** */
-		agent: http.Agent
+		agent: http.Agent;
 		/**
 		 * Should the client attempt to reconnect if the connection is lost.
 		 * @default true
@@ -198,389 +198,399 @@ interface Userstate extends Omit<GlobalUserstate, 'user-id'> {
 	username: string;
 }
 
-interface IRCMessage {
-}
+interface IRCMessage {}
 
 class ClientBase extends EventEmitter {
-  /**
-   * The input options for the client.
-   */
-  opts: ClientOptions;
+	/**
+	 * The input options for the client.
+	 */
+	opts: ClientOptions;
 
-  // Connection related
+	// Connection related
 
-  maxReconnectAttempts: Options.Connection['maxReconnectAttempts'];
-  maxReconnectInterval: Options.Connection['maxReconnectInterval'];
-  reconnect: Options.Connection['reconnect'];
-  reconnectDecay: Options.Connection['reconnectDecay'];
-  reconnectInterval: Options.Connection['reconnectInterval'];
-  /**
-   * Whether the client is currently waiting before calling `connect` to
-   * attempt to reconnect.
-   */
-  reconnecting: boolean;
-  /**
-   * The current number of reconnect attempts.
-   */
-  reconnections: number;
-  /**
-   * The current reconnect interval time in milliseconds.
-   */
-  reconnectTimer: number;
-  /**
-   * The current latency of the connection in seconds.
-   */
-  currentLatency: number;
-  latency: Date;
-  pingLoop: ReturnType<typeof setInterval>;
-  pingTimeout: ReturnType<typeof setTimeout>;
-  secure: Options.Connection['secure'];
-  server: Options.Connection['server'];
-  port: Options.Connection['port'];
-  /**
-   * Was `close` called on the client?
-   */
-  wasCloseCalled: boolean;
-  /**
-   * The reason for the disconnection.
-   */
-  reason: string;
-  /**
-   * The WebSocket connection to the Twitch IRC server.
-   */
-  ws: WebSocket;
+	maxReconnectAttempts: Options.Connection['maxReconnectAttempts'];
+	maxReconnectInterval: Options.Connection['maxReconnectInterval'];
+	reconnect: Options.Connection['reconnect'];
+	reconnectDecay: Options.Connection['reconnectDecay'];
+	reconnectInterval: Options.Connection['reconnectInterval'];
+	/**
+	 * Whether the client is currently waiting before calling `connect` to
+	 * attempt to reconnect.
+	 */
+	reconnecting: boolean;
+	/**
+	 * The current number of reconnect attempts.
+	 */
+	reconnections: number;
+	/**
+	 * The current reconnect interval time in milliseconds.
+	 */
+	reconnectTimer: number;
+	/**
+	 * The current latency of the connection in seconds.
+	 */
+	currentLatency: number;
+	latency: Date;
+	pingLoop: ReturnType<typeof setInterval>;
+	pingTimeout: ReturnType<typeof setTimeout>;
+	secure: Options.Connection['secure'];
+	server: Options.Connection['server'];
+	port: Options.Connection['port'];
+	/**
+	 * Was `close` called on the client?
+	 */
+	wasCloseCalled: boolean;
+	/**
+	 * The reason for the disconnection.
+	 */
+	reason: string;
+	/**
+	 * The WebSocket connection to the Twitch IRC server.
+	 */
+	ws: WebSocket;
 
-  // Chat related
+	// Chat related
 
-  /**
-   * A comma-separated list of emote sets the client user has access to. A
-   * list of emotes in each set can be obtained by [calling the Helix API.
-   * ](https://dev.twitch.tv/docs/api/reference#get-emote-sets)
-   */
-  emotes: string;
-  /**
-   * A plain object with no properties. This object used to store the client's
-   * available emotes for parsing.
-   * @deprecated
-   */
-  emotesets: {};
-  /**
-   * The client's username.
-   */
-  username: string;
-  /**
-   * The list of channels the client is currently in (approximately) and will
-   * join upon connecting or reconnecting.
-   */
-  channels: ChannelName[];
-  /**
-   * @see https://dev.twitch.tv/docs/irc/tags/#globaluserstate-tags
-   */
-  globaluserstate: GlobalUserstate;
-  /**
-   * @see https://dev.twitch.tv/docs/irc/tags#userstate-tags
-   */
-  userstate: { [key: ChannelName]: Userstate };
-  /**
-   * @private
-   */
-  lastJoined: ChannelName;
-  moderators: { [key: ChannelName]: string[] };
+	/**
+	 * A comma-separated list of emote sets the client user has access to. A
+	 * list of emotes in each set can be obtained by [calling the Helix API.
+	 * ](https://dev.twitch.tv/docs/api/reference#get-emote-sets)
+	 */
+	emotes: string;
+	/**
+	 * A plain object with no properties. This object used to store the client's
+	 * available emotes for parsing.
+	 * @deprecated
+	 */
+	emotesets: {};
+	/**
+	 * The client's username.
+	 */
+	username: string;
+	/**
+	 * The list of channels the client is currently in (approximately) and will
+	 * join upon connecting or reconnecting.
+	 */
+	channels: ChannelName[];
+	/**
+	 * @see https://dev.twitch.tv/docs/irc/tags/#globaluserstate-tags
+	 */
+	globaluserstate: GlobalUserstate;
+	/**
+	 * @see https://dev.twitch.tv/docs/irc/tags#userstate-tags
+	 */
+	userstate: { [key: ChannelName]: Userstate };
+	/**
+	 * @private
+	 */
+	lastJoined: ChannelName;
+	moderators: { [key: ChannelName]: string[] };
 
-  // Logger
+	// Logger
 
-  log: Logger;
+	log: Logger;
 
-  constructor(options: ClientOptions);
+	constructor(options: ClientOptions);
 
-  /**
-   * Connect to the Twitch IRC server.
-   */
-  connect(): Promise<[ typeof this.server, typeof this.port ]>;
+	/**
+	 * Connect to the Twitch IRC server.
+	 */
+	connect(): Promise<[typeof this.server, typeof this.port]>;
 
-  /**
-   *
-   */
-  handleMessage(message: IRCMessage): void;
+	/**
+	 *
+	 */
+	handleMessage(message: IRCMessage): void;
 
-  on(eventName: "ping" | "pong", listener: () => EventReturn): ClientBase;
-  on(
-    eventName: "mods" | "vips",
-    listener: (users: string[]) => EventReturn
-  ): ClientBase;
-  on(
-    eventName:
-      | "subscriber"
-      | "subscribers"
-      | "emoteonly"
-      | "r9kbeta"
-      | "r9kmode",
-    listener: (channel: string, enabled: boolean) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "resub" | "subanniversary",
-    listener: (
-      channel: string,
-      username: string,
-      streakMonths: number,
-      msg: string,
-      tags: Userstate,
-      methods: SubMethod
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "sub" | "subscription",
-    listener: (
-      channel: string,
-      username: string,
-      streakMonths: number,
-      recipient: string,
-      methods: SubMethod,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "automod",
-    listener: (
-      channel: string,
-      msgid: string | number,
-      msg: string
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName:
-      | "subscriber"
-      | "subscribers"
-      | "emoteonly"
-      | "r9kbeta"
-      | "r9kbeta",
-    listener: (channels: string[]) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "message" | "whisper" | "action",
-    listener: (
-      source: string,
-      tags: Userstate,
-      message: string,
-      self: boolean
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "sub" | "subscription",
-    listener: (
-      channel: string,
-      username: string,
-      methods: SubMethods,
-      msg: string,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "resub" | "subanniversary",
-    listener: (
-      channel: string,
-      username: string,
-      streakMonths: number,
-      msg: string,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "subgift",
-    listener: (
-      channel: string,
-      username: string,
-      streakMonths: number,
-      recipient: string,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "anonsubgift",
-    listener: (
-      channel: string,
-      streakMonths: number,
-      recipient: string,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "submysterygift",
-    listener: (
-      channel: string,
-      username: string,
-      giftSubCount: number,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "anonsubmysterygift",
-    listener: (
-      channel: string,
-      giftSubCount: number,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "primepaidupgrade",
-    listener: (
-      channel: string,
-      username: string,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "anonprimepaidupgrade",
-    listener: (
-      channel: string,
-      username: string,
-      methods: SubMethods,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "announcement",
-    listener: (
-      channel: string,
-      tags: Userstate,
-      msg: string,
-      _: boolean,
-      color: string
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "raid" | "raided",
-    listener: (
-      channel: string,
-      username: string,
-      viewers: number,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "usernotice",
-    listener: (
-      channel: string,
-      username: string,
-      viewers: number,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "hosted",
-    listener: (
-      channel: string,
-      name: string,
-      viewers: number,
-      autohost: boolean
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "hosting",
-    listener: (channel: string, hostee: string, viewers: number) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "unhost",
-    listener: (channel: string, viewers: number) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "ban",
-    listener:
-      | ((
-          channel: string,
-          msg: string,
-          _: null,
-          tags: Userstate
-        ) => EventReturn)
-      | ((
-          channel: string,
-          msg: string,
-          _: null,
-          duration: number,
-          tags: Userstate
-        ) => EventReturn)
-  ): ClientBase;
-  on(
-    eventName: "clearchat",
-    listener: (channel: string) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "messagedeleted",
-    listener: (
-      channel: string,
-      username: string,
-      deletedMessage: string,
-      tags: Userstate
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "join",
-    listener: (channel: string, username: string, self: boolean) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "part",
-    listener: (channel: string, username: string, self: boolean) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "emotesets",
-    listener: (emotes: string) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "globaluserstate",
-    listener: (tags: GlobalUserstate) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "roomstate",
-    listener: (channel: string, tags: Userstate) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "slow" | "slowmode",
-    listener: (
-      channel: string,
-      enabled: boolean,
-      seconds?: number
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "mod" | "unmod",
-    listener: (channel: string, username: string) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "followersonly" | "followersmode",
-    listener: (
-      channel: string,
-      enabled: boolean,
-      minutes?: number
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "cheer",
-    listener: (channel: string, tags: Userstate, msg: string) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "redeem",
-    listener: (
-      channel: string,
-      username: string,
-      rewardType: string,
-      tags: Userstate,
-      msg: string
-    ) => EventReturn
-  ): ClientBase;
-  on(
-    eventName: "notice" | string,
-    listener: (...args: any) => EventReturn
-  ): ClientBase;
+	on(eventName: 'ping' | 'pong', listener: () => EventReturn): ClientBase;
+	on(
+		eventName: 'mods' | 'vips',
+		listener: (users: string[]) => EventReturn
+	): ClientBase;
+	on(
+		eventName:
+			| 'subscriber'
+			| 'subscribers'
+			| 'emoteonly'
+			| 'r9kbeta'
+			| 'r9kmode',
+		listener: (channel: string, enabled: boolean) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'resub' | 'subanniversary',
+		listener: (
+			channel: string,
+			username: string,
+			streakMonths: number,
+			msg: string,
+			tags: Userstate,
+			methods: SubMethod
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'sub' | 'subscription',
+		listener: (
+			channel: string,
+			username: string,
+			streakMonths: number,
+			recipient: string,
+			methods: SubMethod,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'automod',
+		listener: (
+			channel: string,
+			msgid: string | number,
+			msg: string
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName:
+			| 'subscriber'
+			| 'subscribers'
+			| 'emoteonly'
+			| 'r9kbeta'
+			| 'r9kbeta',
+		listener: (channels: string[]) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'message' | 'whisper' | 'action',
+		listener: (
+			source: string,
+			tags: Userstate,
+			message: string,
+			self: boolean
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'sub' | 'subscription',
+		listener: (
+			channel: string,
+			username: string,
+			methods: SubMethods,
+			msg: string,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'resub' | 'subanniversary',
+		listener: (
+			channel: string,
+			username: string,
+			streakMonths: number,
+			msg: string,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'subgift',
+		listener: (
+			channel: string,
+			username: string,
+			streakMonths: number,
+			recipient: string,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'anonsubgift',
+		listener: (
+			channel: string,
+			streakMonths: number,
+			recipient: string,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'submysterygift',
+		listener: (
+			channel: string,
+			username: string,
+			giftSubCount: number,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'anonsubmysterygift',
+		listener: (
+			channel: string,
+			giftSubCount: number,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'primepaidupgrade',
+		listener: (
+			channel: string,
+			username: string,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'anonprimepaidupgrade',
+		listener: (
+			channel: string,
+			username: string,
+			methods: SubMethods,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'announcement',
+		listener: (
+			channel: string,
+			tags: Userstate,
+			msg: string,
+			_: boolean,
+			color: string
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'raid' | 'raided',
+		listener: (
+			channel: string,
+			username: string,
+			viewers: number,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'usernotice',
+		listener: (
+			channel: string,
+			username: string,
+			viewers: number,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'hosted',
+		listener: (
+			channel: string,
+			name: string,
+			viewers: number,
+			autohost: boolean
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'hosting',
+		listener: (
+			channel: string,
+			hostee: string,
+			viewers: number
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'unhost',
+		listener: (channel: string, viewers: number) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'ban',
+		listener:
+			| ((
+					channel: string,
+					msg: string,
+					_: null,
+					tags: Userstate
+			  ) => EventReturn)
+			| ((
+					channel: string,
+					msg: string,
+					_: null,
+					duration: number,
+					tags: Userstate
+			  ) => EventReturn)
+	): ClientBase;
+	on(
+		eventName: 'clearchat',
+		listener: (channel: string) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'messagedeleted',
+		listener: (
+			channel: string,
+			username: string,
+			deletedMessage: string,
+			tags: Userstate
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'join',
+		listener: (
+			channel: string,
+			username: string,
+			self: boolean
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'part',
+		listener: (
+			channel: string,
+			username: string,
+			self: boolean
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'emotesets',
+		listener: (emotes: string) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'globaluserstate',
+		listener: (tags: GlobalUserstate) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'roomstate',
+		listener: (channel: string, tags: Userstate) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'slow' | 'slowmode',
+		listener: (
+			channel: string,
+			enabled: boolean,
+			seconds?: number
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'mod' | 'unmod',
+		listener: (channel: string, username: string) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'followersonly' | 'followersmode',
+		listener: (
+			channel: string,
+			enabled: boolean,
+			minutes?: number
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'cheer',
+		listener: (channel: string, tags: Userstate, msg: string) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'redeem',
+		listener: (
+			channel: string,
+			username: string,
+			rewardType: string,
+			tags: Userstate,
+			msg: string
+		) => EventReturn
+	): ClientBase;
+	on(
+		eventName: 'notice' | string,
+		listener: (...args: any) => EventReturn
+	): ClientBase;
 }
 
 class Client extends ClientBase {
-
 	/**
 	 * Send action message (/me <message>) on a channel.
 	 * @param channel The channel to send the message to.
@@ -588,7 +598,11 @@ class Client extends ClientBase {
 	 * @param tags The tags to send with the message.
 	 * @memberof Client
 	 */
-	action(channel: string, message: string, tags?: OutgoingTags): Promise<[ channel: ChannelName, message: string ]>;
+	action(
+		channel: string,
+		message: string,
+		tags?: OutgoingTags
+	): Promise<[channel: ChannelName, message: string]>;
 	/**
 	 * Ban username on channel.
 	 * @param channel The channel to ban the user from.
@@ -596,78 +610,97 @@ class Client extends ClientBase {
 	 * @param reason The reason to ban the user with.
 	 * @memberof Client
 	 */
-	ban(channel: string, username: string, reason?: string): Promise<[ channel: ChannelName, username: string, reason: string ]>;
+	ban(
+		channel: string,
+		username: string,
+		reason?: string
+	): Promise<[channel: ChannelName, username: string, reason: string]>;
 	/**
 	 * Clear all messages on a channel.
 	 * @param channel The channel to clear.
 	 * @memberof Client
 	 */
-	clear(channel: string): Promise<[ channel: ChannelName ]>;
+	clear(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Change the color of the client's username.
 	 * @param newColor  The color to change to.
 	 * @memberof Client
 	 */
-	color(newColor: string): Promise<[ newColor: string ]>;
+	color(newColor: string): Promise<[newColor: string]>;
 	/**
 	 * Run commercial on a channel for X seconds.
 	 * @param channel The channel to run the commercial on.
 	 * @param seconds The length of the commercial in seconds. Default is 30.
 	 * @memberof Client
 	 */
-	 commercial(channel: string, seconds?: 30 | 60 | 90 | 120 | 150 | 180): Promise<[ channel: ChannelName, seconds: number ]>;
+	commercial(
+		channel: string,
+		seconds?: 30 | 60 | 90 | 120 | 150 | 180
+	): Promise<[channel: ChannelName, seconds: number]>;
 	/**
 	 * Delete a specific message on a channel.
 	 * @param channel The channel to delete the message from.
 	 * @param messageUUID The message UUID to delete.
 	 * @memberof Client
 	 */
-	 deletemessage(channel: string, messageUUID: string): Promise<[ channel: ChannelName, messageUUID: string ]>;
+	deletemessage(
+		channel: string,
+		messageUUID: string
+	): Promise<[channel: ChannelName, messageUUID: string]>;
 	/**
 	 * Enable emote-only mode on a channel.
 	 * @param channel The channel to enable emote-only mode on.
 	 * @memberof Client
 	 */
-	 emoteonly(channel: string): Promise<[ channel: ChannelName ]>;
+	emoteonly(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Disable emote-only mode on a channel.
 	 * @param channel The channel to disable emote-only mode on.
 	 * @memberof Client
 	 */
-	 emoteonlyoff(channel: string): Promise<[ channel: ChannelName ]>;
+	emoteonlyoff(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Enable followers-only mode on a channel.
 	 * @param channel The channel to enable followers-only mode on.
 	 * @param minutes The number of minutes to set followers-only mode to.
 	 * @memberof Client
 	 */
-	followersonly(channel: string, minutes: number): Promise<[ channel: ChannelName, minutes: number ]>;
+	followersonly(
+		channel: string,
+		minutes: number
+	): Promise<[channel: ChannelName, minutes: number]>;
 	/**
 	 * Disable followers-only mode on a channel.
 	 * @param channel The channel to disable followers-only mode on.
 	 * @memberof Client
 	 */
-	followersonlyoff(channel: string): Promise<[ channel: ChannelName ]>;
+	followersonlyoff(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Host a channel.
 	 * @param channel The channel to send the host to.
 	 * @param target The target channel to host.
 	 * @memberof Client
 	 */
-	host(channel: string, target: string): Promise<[ channel: ChannelName, target: string, remainingHosts: number ]>;
+	host(
+		channel: string,
+		target: string
+	): Promise<[channel: ChannelName, target: string, remainingHosts: number]>;
 	/**
 	 * Join a channel.
 	 * @param channel The channel to join.
 	 * @memberof Client
 	 */
-	join(channel: string): Promise<[ channel: ChannelName ]>;
+	join(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Mod username on channel.
 	 * @param channel The channel to mod the user on.
 	 * @param username The username to mod.
 	 * @memberof Client
 	 */
-	mod(channel: string, username: string): Promise<[ channel: ChannelName, username: string ]>;
+	mod(
+		channel: string,
+		username: string
+	): Promise<[channel: ChannelName, username: string]>;
 	/**
 	 * Get list of mods on a channel.
 	 * @param channel The channel to get the mods of.
@@ -679,30 +712,30 @@ class Client extends ClientBase {
 	 * @param channel The channel to leave.
 	 * @memberof Client
 	 */
-	part(channel: string): Promise<[ channel: ChannelName ]>;
+	part(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Send a ping to the server.
 	 * @memberof Client
 	 */
-	ping(): Promise<[ latencySeconds: number ]>
+	ping(): Promise<[latencySeconds: number]>;
 	/**
 	 * Enable R9KBeta mode on a channel.
 	 * @param channel The channel to enable R9KBeta mode on.
 	 */
-	r9kbeta(channel: string): Promise<[ channel: ChannelName ]>;
+	r9kbeta(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Disable R9KBeta mode on a channel.
 	 * @param channel The channel to disable R9KBeta mode on.
 	 * @memberof Client
 	 */
-	r9kbetaoff(channel: string): Promise<[ channel: ChannelName ]>;
+	r9kbetaoff(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Send a raw command to the server.
 	 * @param command The command to send.
 	 * @param tags The tags to send with the command.
 	 * @memberof Client
 	 */
-	raw(command: string, tags?: OutgoingTags): Promise<[ command: string ]>;
+	raw(command: string, tags?: OutgoingTags): Promise<[command: string]>;
 	/**
 	 * Send a message to a channel in reply to a message.
 	 * @param channel The channel to send the message to.
@@ -710,7 +743,11 @@ class Client extends ClientBase {
 	 * @param replyParentMsgId The message ID to reply to.
 	 * @memberof Client
 	 */
-	reply(channel: string, message: string, replyParentMsgId: string): Promise<[ channel: ChannelName, message: string ]>;
+	reply(
+		channel: string,
+		message: string,
+		replyParentMsgId: string
+	): Promise<[channel: ChannelName, message: string]>;
 	/**
 	 * Send a message to a channel.
 	 * @param channel The channel to send the message to.
@@ -718,32 +755,39 @@ class Client extends ClientBase {
 	 * @param tags The tags to send with the message.
 	 * @memberof Client
 	 */
-	say(channel: string, message: string, tags?: OutgoingTags): Promise<[ channel: ChannelName, message: string ]>;
+	say(
+		channel: string,
+		message: string,
+		tags?: OutgoingTags
+	): Promise<[channel: ChannelName, message: string]>;
 	/**
 	 * Enable slow mode on a channel.
 	 * @param channel The channel to enable slow mode on.
 	 * @param seconds The number of seconds to set slow mode to.
 	 * @memberof Client
 	 */
-	slow(channel: string, seconds: number): Promise<[ channel: ChannelName, seconds: number ]>;
+	slow(
+		channel: string,
+		seconds: number
+	): Promise<[channel: ChannelName, seconds: number]>;
 	/**
 	 * Disable slow mode on a channel.
 	 * @param channel The channel to disable slow mode on.
 	 * @memberof Client
 	 */
-	slowoff(channel: string): Promise<[ channel: ChannelName ]>;
+	slowoff(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Enable subscribers mode on a channel.
 	 * @param channel The channel to enable subscribers mode on.
 	 * @memberof Client
 	 */
-	subscribers(channel: string): Promise<[ channel: ChannelName ]>;
+	subscribers(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Disable subscribers mode on a channel.
 	 * @param channel The channel to disable subscribers mode on.
 	 * @memberof Client
 	 */
-	subscribersoff(channel: string): Promise<[ channel: ChannelName ]>;
+	subscribersoff(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Timeout username on channel for X seconds.
 	 * @param channel The channel to timeout the user on.
@@ -752,41 +796,65 @@ class Client extends ClientBase {
 	 * @param reason The reason to timeout the user for.
 	 * @memberof Client
 	 */
-	timeout(channel: string, username: string, seconds: number, reason?: string): Promise<[ channel: ChannelName, username: string, seconds: number, reason: string ]>;
+	timeout(
+		channel: string,
+		username: string,
+		seconds: number,
+		reason?: string
+	): Promise<
+		[
+			channel: ChannelName,
+			username: string,
+			seconds: number,
+			reason: string
+		]
+	>;
 	/**
 	 * Unban username on channel.
 	 * @param channel The channel to unban the user on.
 	 * @param username The username to unban.
 	 * @memberof Client
 	 */
-	unban(channel: string, username: string): Promise<[ channel: ChannelName, username: string ]>;
+	unban(
+		channel: string,
+		username: string
+	): Promise<[channel: ChannelName, username: string]>;
 	/**
 	 * Unhost a channel.
 	 * @param channel The channel to send the unhost to.
 	 * @memberof Client
 	 */
-	unhost(channel: string): Promise<[ channel: ChannelName ]>;
+	unhost(channel: string): Promise<[channel: ChannelName]>;
 	/**
 	 * Unmod username on channel.
 	 * @param channel The channel to unmod the user on.
 	 * @param username The username to unmod.
 	 * @memberof Client
 	 */
-	unmod(channel: string, username: string): Promise<[ channel: ChannelName, username: string ]>;
+	unmod(
+		channel: string,
+		username: string
+	): Promise<[channel: ChannelName, username: string]>;
 	/**
 	 * Remove username from VIP list on channel.
 	 * @param channel The channel to remove the user from.
 	 * @param username The username to remove.
 	 * @memberof Client
 	 */
-	unvip(channel: string, username: string): Promise<[ channel: ChannelName, username: string ]>;
+	unvip(
+		channel: string,
+		username: string
+	): Promise<[channel: ChannelName, username: string]>;
 	/**
 	 * Add username to VIP list on channel.
 	 * @param channel The channel to add the user to.
 	 * @param username The username to add.
 	 * @memberof Client
 	 */
-	vip(channel: string, username: string): Promise<[ channel: ChannelName, username: string ]>;
+	vip(
+		channel: string,
+		username: string
+	): Promise<[channel: ChannelName, username: string]>;
 	/**
 	 * Get list of VIPs on a channel.
 	 * @param channel The channel to get the VIPs of.
@@ -801,7 +869,10 @@ class Client extends ClientBase {
 	 * @param message The message to send.
 	 * @memberof Client
 	 */
-	whisper(username: string, message: string): Promise<[ username: string, message: string ]>;
+	whisper(
+		username: string,
+		message: string
+	): Promise<[username: string, message: string]>;
 }
 
 interface Client {
